@@ -65,6 +65,7 @@ export default function HeaderButtonsComponent() {
 		shouldUnitsButtonDisabled: true,
 		shouldConversionsButtonDisabled: true,
 		shouldDaysButtonDisabled: true,
+		shouldHolidayRatesButtonDisabled: true,
 		shouldWeeksButtonDisabled: true,
 		shouldLogMsgButtonDisabled: true,
 		shouldVisualUnitMapButtonDisabled: true,
@@ -105,6 +106,7 @@ export default function HeaderButtonsComponent() {
 			shouldUnitsButtonDisabled: pathname === '/units',
 			shouldConversionsButtonDisabled: pathname === '/conversions',
 			shouldDaysButtonDisabled: pathname === '/days',
+			shouldHolidayRatesButtonDisabled: pathname === '/holiday-instances',
 			shouldWeeksButtonDisabled: pathname === '/weeks',
 			shouldLogMsgButtonDisabled: pathname === '/logmsg',
 			shouldVisualUnitMapButtonDisabled: pathname === '/visual-unit'
@@ -241,6 +243,13 @@ export default function HeaderButtonsComponent() {
 								tag={Link}
 								to="/weeks">
 								<FormattedMessage id='patterns.weekly' />
+							</DropdownItem>
+							<DropdownItem
+								style={state.adminViewableLinkStyle}
+								disabled={state.shouldHolidayRatesButtonDisabled}
+								tag={Link}
+								to="/holiday-instances">
+								<FormattedMessage id='holiday.rates' />
 							</DropdownItem>
 							<DropdownItem
 								style={state.adminViewableLinkStyle}
