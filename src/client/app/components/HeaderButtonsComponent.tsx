@@ -219,6 +219,13 @@ export default function HeaderButtonsComponent() {
 							</DropdownItem>
 							<DropdownItem
 								style={state.adminViewableLinkStyle}
+								disabled={state.shouldHolidayRatesButtonDisabled}
+								tag={Link}
+								to="/holiday-instances">
+								<FormattedMessage id='holiday.rates' />
+							</DropdownItem>
+							<DropdownItem
+								style={state.adminViewableLinkStyle}
 								disabled={state.shouldMapsButtonDisabled}
 								tag={Link}
 								to="/maps">
@@ -243,13 +250,6 @@ export default function HeaderButtonsComponent() {
 								tag={Link}
 								to="/weeks">
 								<FormattedMessage id='patterns.weekly' />
-							</DropdownItem>
-							<DropdownItem
-								style={state.adminViewableLinkStyle}
-								disabled={state.shouldHolidayRatesButtonDisabled}
-								tag={Link}
-								to="/holiday-instances">
-								<FormattedMessage id='holiday.rates' />
 							</DropdownItem>
 							<DropdownItem
 								style={state.adminViewableLinkStyle}

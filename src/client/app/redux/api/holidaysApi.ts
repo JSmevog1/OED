@@ -7,10 +7,9 @@ import { Holiday } from '../../types/redux/holidays';
 import { baseApi } from './baseApi';
 
 /*
- * Read-only endpoints for the `holidays` table (base holidays fetched from the
- * external API via Rose's page). The HolidayInstancePage only reads holidays;
- * add/edit/delete endpoints belong to Rose's page and can be injected here
- * when her page is wired up.
+ * Read-only endpoint for the `holidays` table. The holiday instance page only
+ * reads holidays; mutation endpoints belong with the holidays page and can be
+ * injected here when that page is wired up.
  */
 export const holidaysApi = baseApi.injectEndpoints({
 	endpoints: builder => ({
@@ -20,10 +19,6 @@ export const holidaysApi = baseApi.injectEndpoints({
 				result
 					? [...result.map(({ id }) => ({ type: 'Holidays' as const, id })), { type: 'Holidays', id: 'LIST' }]
 					: [{ type: 'Holidays', id: 'LIST' }]
-		}),
-		getHolidayById: builder.query<Holiday, number>({
-			query: id => `api/holidays/${id}`,
-			providesTags: (result, error, id) => [{ type: 'Holidays', id }]
 		})
 	})
 });
@@ -37,6 +32,5 @@ export const selectAllHolidays = createSelector(
 export const stableEmptyHolidays: Holiday[] = [];
 
 export const {
-	useGetHolidaysQuery,
-	useGetHolidayByIdQuery
+	useGetHolidaysQuery
 } = holidaysApi;
