@@ -25,9 +25,14 @@ import { titleStyle, tooltipBaseStyle } from '../../styles/modalStyle';
 import TooltipHelpComponent from '../TooltipHelpComponent';
 import TooltipMarkerComponent from '../TooltipMarkerComponent';
 
-// TODO: A region selector should auto-populate the base-holiday dropdown from
-// the selected region's holidays once region support exists; until then the
-// dropdown lists all holidays with their location in parentheses.
+// A holiday rate is exactly one holiday plus one day pattern, so the
+// location filter below narrows toward a single choice rather than a set -
+// it reuses the same searchable react-select pattern as the base-holiday
+// dropdown.
+interface LocationOption {
+	value: string;
+	label: string;
+}
 
 // Sentinel values for "nothing selected yet" dropdown state, matching the
 // -999 placeholder convention used in the conversion modals.
@@ -114,6 +119,19 @@ export default function HolidayInstancePage() {
 		[holidays]
 	);
 
+	// Locations derived from the holidays already in Redux state; there is no
+	// dedicated locations endpoint.
+	const locations = useMemo(
+		() => Array.from(new Set(
+			holidays.map(holiday => holiday.location.trim()).filter(location => location !== '')
+		)).sort((first, second) => first.localeCompare(second, undefined, { sensitivity: 'base' })),
+		[holidays]
+	);
+	const locationOptions: LocationOption[] = useMemo(
+		() => locations.map(location => ({ value: location, label: location })),
+		[locations]
+	);
+
 	/* Local (modal) state - untied to global state until Save. */
 	const [showModal, setShowModal] = useState<boolean>(false);
 	const [modalMode, setModalMode] = useState<ModalMode>('create');
@@ -129,6 +147,9 @@ export default function HolidayInstancePage() {
 	// Warn (non-blocking) when the base holiday changes after a name was
 	// already entered, since the name may no longer match.
 	const [showBaseChangeWarning, setShowBaseChangeWarning] = useState<boolean>(false);
+	// Location chosen in the create modal to narrow the base-holiday choices;
+	// unused (but harmless) in edit mode, since the base holiday is locked there.
+	const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
 
 	const tooltipStyle = {
 		...tooltipBaseStyle,
@@ -143,11 +164,18 @@ export default function HolidayInstancePage() {
 	const patternName = (id: number) =>
 		dayPatterns.find(p => p.id === id)?.name ?? '';
 
-	// Searchable dropdown options for the base holiday.
+	// Searchable dropdown options for the base holiday, narrowed to whatever
+	// location is selected above.
 	// TODO: swap to the shared SingleSelectComponent if it fits.
+	const selectedLocationOption =
+		locationOptions.find(option => option.value === selectedLocation) ?? null;
+	const filteredHolidays = useMemo(
+		() => sortedHolidays.filter(h => h.location.trim() === selectedLocation),
+		[sortedHolidays, selectedLocation]
+	);
 	const holidayOptions = useMemo(
-		() => sortedHolidays.map(h => ({ value: h.id, label: holidayLabel(h) })),
-		[sortedHolidays]
+		() => filteredHolidays.map(h => ({ value: h.id, label: holidayLabel(h) })),
+		[filteredHolidays]
 	);
 	const selectedHolidayOption =
 		holidayOptions.find(o => o.value === draft.holidayId) ?? null;
@@ -180,6 +208,7 @@ export default function HolidayInstancePage() {
 		setEditingId(null);
 		setDraft(defaultValues);
 		setInitialDraft(defaultValues);
+		setSelectedLocation(locations.length === 1 ? locations[0] : null);
 		setShowModal(true);
 	};
 
@@ -190,10 +219,16 @@ export default function HolidayInstancePage() {
 			dayPatternId: instance.dayPatternId,
 			note: instance.note ?? ''
 		};
+		const currentHoliday = holidays.find(h => h.id === instance.holidayId);
 		setModalMode('edit');
 		setEditingId(instance.id);
 		setDraft(asDraft);
 		setInitialDraft(asDraft);
+		setSelectedLocation(
+			locations.length === 1
+				? locations[0]
+				: currentHoliday ? currentHoliday.location.trim() : null
+		);
 		setShowModal(true);
 	};
 
@@ -207,6 +242,7 @@ export default function HolidayInstancePage() {
 		setEditingId(null);
 		setDraft(defaultValues);
 		setInitialDraft(defaultValues);
+		setSelectedLocation(null);
 	};
 
 	// Close attempt (backdrop click, X, or Discard). Closing with no changes is
@@ -309,6 +345,48 @@ export default function HolidayInstancePage() {
 				</ModalHeader>
 				<ModalBody>
 					<Container>
+						{/* Location: narrows the base-holiday choices below. Only
+						    relevant on create - the base holiday (and therefore its
+						    location) is locked on edit. */}
+						{modalMode === 'create' && (
+							<FormGroup>
+								<Label for='holidayLocation'>{translate('holiday.location')}</Label>
+								{locations.length > 1 ? (
+									<Select
+										inputId='holidayLocation'
+										name='holidayLocation'
+										options={locationOptions}
+										value={selectedLocationOption}
+										onChange={option => {
+											const newLocation = option ? option.value : null;
+											setSelectedLocation(newLocation);
+											const currentHoliday = holidays.find(h => h.id === draft.holidayId);
+											const stillValid = currentHoliday !== undefined &&
+												currentHoliday.location.trim() === newLocation;
+											if (!stillValid) {
+												setDraft(d => ({ ...d, holidayId: NO_HOLIDAY }));
+												setShowBaseChangeWarning(false);
+											}
+										}}
+										placeholder={translate('holiday.location.select')}
+										isClearable
+									/>
+								) : (
+									<Input
+										id='holidayLocation'
+										name='holidayLocation'
+										type='select'
+										disabled
+										value={locations[0] ?? ''}
+									>
+										<option value={locations[0] ?? ''}>
+											{locations[0] ?? translate('holiday.location.unavailable')}
+										</option>
+									</Input>
+								)}
+							</FormGroup>
+						)}
+
 						<Row xs='1' lg='2'>
 							<Col>
 								{/* Base holiday: searchable combobox on create; locked on
@@ -333,7 +411,11 @@ export default function HolidayInstancePage() {
 													);
 													setDraft(d => ({ ...d, holidayId: newId }));
 												}}
-												placeholder={translate('holiday.base.select')}
+												placeholder={
+													selectedLocation !== null
+														? translate('holiday.base.select')
+														: translate('holiday.base.select.location.first')
+												}
 												isClearable
 												styles={isHolidayInvalid ? invalidSelectStyles : undefined}
 											/>
